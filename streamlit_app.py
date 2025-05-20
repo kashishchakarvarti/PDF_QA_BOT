@@ -22,9 +22,14 @@ st.write("Upload a PDF, ask questions, and get AI-powered answers — with page 
 uploaded_file = st.file_uploader("📄 Upload your PDF", type=["pdf"])
 
 if uploaded_file:
+    if uploaded_file.type != "application/pdf":
+        st.error("❌ Only PDF files are allowed.")
+        st.stop()
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
         tmp.write(uploaded_file.read())
         pdf_path = tmp.name
+
 
     # Step 1: Load PDF
     loader = PyPDFLoader(pdf_path)
