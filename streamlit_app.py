@@ -14,12 +14,13 @@ import tempfile
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
-st.set_page_config(page_title="PDF Chatbot", layout="centered")
-st.title("🤖 Chat with Your PDF")
-st.write("Upload a PDF, ask questions, and get AI-powered answers — with page references and live INR cost tracking.")
+# Streamlit page config
+st.set_page_config(page_title="PDF Q&A", layout="centered")
+st.title("📘 Ask Questions About Your PDF")
+st.write("Upload a PDF file and ask any question. You'll get accurate answers and page references instantly.")
 
-# Upload PDF file
-uploaded_file = st.file_uploader("📄 Upload your PDF", type=["pdf"])
+# File upload
+uploaded_file = st.file_uploader("📄 Upload your PDF file", type=["pdf"])
 
 if uploaded_file:
     if uploaded_file.type != "application/pdf":
@@ -30,33 +31,37 @@ if uploaded_file:
         tmp.write(uploaded_file.read())
         pdf_path = tmp.name
 
-
-    # Step 1: Load PDF
+    # Load the PDF
     loader = PyPDFLoader(pdf_path)
     pages = loader.load()
 
-    # Step 2: Chunk PDF
+    # Split into text chunks
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=200)
     docs = splitter.split_documents(pages)
 
-    # Step 3: Embeddings + FAISS
+    if not docs:
+        st.error("❌ No readable text found in the PDF. Please upload a valid text-based PDF.")
+        st.stop()
+
+    # Generate embeddings and create vector index
     embeddings = OpenAIEmbeddings(openai_api_key=api_key)
     vectorstore = FAISS.from_documents(docs, embedding=embeddings)
-
-    # Step 4: GPT + Retrieval
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-    llm = ChatOpenAI(openai_api_key=api_key, model="gpt-3.5-turbo")  # or "gpt-4"
 
+    # Language model
+    llm = ChatOpenAI(openai_api_key=api_key, model="gpt-3.5-turbo")
+
+    # QA chain
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         retriever=retriever,
         return_source_documents=True
     )
 
-    # Step 5: User input
-    question = st.text_input("📝 Ask a question from your PDF:")
+    # Input question
+    question = st.text_input("📝 Ask a question from the document:")
     if question:
-        with st.spinner("Thinking..."):
+        with st.spinner("Searching..."):
             with get_openai_callback() as cb:
                 result = qa_chain({"query": question})
 
@@ -69,11 +74,11 @@ if uploaded_file:
                 "sorry", "not provided", "couldn't find"
             ]
 
-            st.markdown("### 🧠 Answer")
+            st.markdown("### 📌 Answer")
             st.write(answer)
 
             if not any(v in answer.lower() for v in vague_phrases):
                 st.markdown(f"**📄 Source Page:** {page}")
 
             inr = cb.total_cost * 83.5
-            st.markdown(f"💰 Tokens used: `{cb.total_tokens}` — Approx. cost: **₹{inr:.2f}**")
+            st.markdown(f"💰 Tokens used: `{cb.total_tokens}` — Estimated cost: **₹{inr:.2f}**")
