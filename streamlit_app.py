@@ -14,10 +14,10 @@ import tempfile
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
-st.set_page_config(page_title="PDF GPT Chatbot", layout="centered")
+st.set_page_config(page_title="PDF Chatbot", layout="centered")
 
 st.title("🤖 Chat with Your PDF")
-st.write("Upload a PDF, ask questions, and get smart GPT answers — with page references and cost in INR.")
+st.write("Upload a PDF, ask questions, and get smart answers — with page references and cost in INR.")
 
 # File upload
 uploaded_file = st.file_uploader("📄 Upload your PDF", type=["pdf"])
@@ -62,7 +62,7 @@ if uploaded_file:
                 "no information", "not mentioned", "i don't know", "sorry", "not provided", "couldn't find"
             ])
 
-            st.markdown("### 🧠 GPT's Answer")
+            st.markdown("### 🧠 Answer")
             st.write(answer)
 
             if not vague:
