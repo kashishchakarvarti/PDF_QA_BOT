@@ -1,84 +1,92 @@
 import os
+import tempfile
 import streamlit as st
+import speech_recognition as sr
+import pyttsx3
 from dotenv import load_dotenv
-from langchain.document_loaders import PyPDFLoader
+
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.vectorstores import FAISS
+from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 from langchain_openai import ChatOpenAI
-from langchain.callbacks import get_openai_callback
-import tempfile
+from langchain_community.callbacks import get_openai_callback
 
 # Load environment variables
 load_dotenv()
 api_key = os.getenv("OPENAI_API_KEY")
 
-# Streamlit page config
-st.set_page_config(page_title="PDF Q&A", layout="centered")
-st.title("📘 Ask Questions About Your PDF")
-st.write("Upload a PDF file and ask any question. You'll get accurate answers and page references instantly.")
+st.set_page_config(page_title="Voice PDF Assistant", layout="centered")
+st.title("📄🎙️ Voice-Powered PDF Assistant")
 
-# File upload
-uploaded_file = st.file_uploader("📄 Upload your PDF file", type=["pdf"])
+# Sidebar PDF upload
+uploaded_file = st.sidebar.file_uploader("Upload a PDF", type="pdf")
+
+# Setup text-to-speech engine
+tts = pyttsx3.init()
+tts.setProperty("rate", 160)
+for voice in tts.getProperty("voices"):
+    if "Veena" in voice.name:
+        tts.setProperty("voice", voice.id)
+        break
+
+def speak(text):
+    st.markdown(f"**🤖 Response:** {text}")
+    tts.say(text)
+    tts.runAndWait()
 
 if uploaded_file:
-    if uploaded_file.type != "application/pdf":
-        st.error("❌ Only PDF files are allowed.")
-        st.stop()
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
+        tmp_file.write(uploaded_file.read())
+        tmp_path = tmp_file.name
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-        tmp.write(uploaded_file.read())
-        pdf_path = tmp.name
-
-    # Load the PDF
-    loader = PyPDFLoader(pdf_path)
+    # Load and embed PDF
+    loader = PyPDFLoader(tmp_path)
     pages = loader.load()
-
-    # Split into text chunks
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=200)
     docs = splitter.split_documents(pages)
 
-    if not docs:
-        st.error("❌ No readable text found in the PDF. Please upload a valid text-based PDF.")
-        st.stop()
-
-    # Generate embeddings and create vector index
     embeddings = OpenAIEmbeddings(openai_api_key=api_key)
-    vectorstore = FAISS.from_documents(docs, embedding=embeddings)
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+    vectorstore = Chroma.from_documents(docs, embedding=embeddings, persist_directory="./chroma_db")
 
-    # Language model
-    llm = ChatOpenAI(openai_api_key=api_key, model="gpt-3.5-turbo")
+    llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key)
 
-    # QA chain
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
-        retriever=retriever,
+        retriever=vectorstore.as_retriever(search_kwargs={"k": 3}),
         return_source_documents=True
     )
 
-    # Input question
-    question = st.text_input("📝 Ask a question from the document:")
-    if question:
-        with st.spinner("Searching..."):
-            with get_openai_callback() as cb:
-                result = qa_chain({"query": question})
+    st.success("✅ PDF loaded and indexed.")
 
-            answer = result["result"]
-            top_doc = result["source_documents"][0]
-            page = top_doc.metadata.get("page_label") or top_doc.metadata.get("page", "?")
+    # Mode selector
+    mode = st.radio("Choose input mode:", ["Text", "Voice"])
 
-            vague_phrases = [
-                "no information", "not mentioned", "i don't know",
-                "sorry", "not provided", "couldn't find"
-            ]
+    # Query and response
+    query = ""
+    if mode == "Text":
+        query = st.text_input("Type your question:")
+    else:
+        if st.button("🎤 Start Recording"):
+            recognizer = sr.Recognizer()
+            with sr.Microphone() as source:
+                st.info("Listening...")
+                recognizer.adjust_for_ambient_noise(source)
+                audio = recognizer.listen(source)
 
-            st.markdown("### 📌 Answer")
-            st.write(answer)
+            try:
+                query = recognizer.recognize_google(audio)
+                st.markdown(f"**You asked:** {query}")
+            except:
+                st.error("❌ Could not recognize speech")
 
-            if not any(v in answer.lower() for v in vague_phrases):
-                st.markdown(f"**📄 Source Page:** {page}")
-
-            inr = cb.total_cost * 83.5
-            st.markdown(f"💰 Tokens used: `{cb.total_tokens}` — Estimated cost: **₹{inr:.2f}**")
+    if query:
+        with get_openai_callback() as cb:
+            result = qa_chain.invoke({"query": query})
+            response = result["result"]
+            speak(response)
+            inr_cost = cb.total_cost * 88
+            st.markdown(f"📊 **Tokens used:** {cb.total_tokens} | **Cost:** ₹{inr_cost:.2f}")
+else:
+    st.warning("👈 Please upload a PDF to begin.")

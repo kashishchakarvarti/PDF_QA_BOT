@@ -1,8 +1,12 @@
 streamlit
+speechrecognition
+pyttsx3
+pyaudio
+openai
 langchain
-langchain-openai
 langchain-community
+langchain-openai
 chromadb
-faiss-cpu
 pypdf
+faiss-cpu
 python-dotenv
