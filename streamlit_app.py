@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain_openai import ChatOpenAI
 from langchain_community.callbacks import get_openai_callback
@@ -49,7 +49,7 @@ if uploaded_file:
     embeddings = OpenAIEmbeddings(openai_api_key=api_key)
 
     # Use Chroma in-memory (no persist_directory!)
-    vectorstore = Chroma.from_documents(
+    vectorstore = FAISS.from_documents(
         clean_docs,
         embedding=embeddings
     )
