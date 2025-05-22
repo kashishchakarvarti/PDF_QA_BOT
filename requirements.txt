@@ -1,7 +1,6 @@
 streamlit
 speechrecognition
-pyttsx3
-pyaudio
+gTTS
 openai
 langchain
 langchain-community

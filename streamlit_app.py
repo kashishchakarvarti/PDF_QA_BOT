@@ -2,7 +2,7 @@ import os
 import tempfile
 import streamlit as st
 import speech_recognition as sr
-import pyttsx3
+from gtts import gTTS
 from dotenv import load_dotenv
 
 from langchain_community.document_loaders import PyPDFLoader
@@ -23,18 +23,13 @@ st.title("📄🎙️ Voice-Powered PDF Assistant")
 # Sidebar PDF upload
 uploaded_file = st.sidebar.file_uploader("Upload a PDF", type="pdf")
 
-# Setup text-to-speech engine
-tts = pyttsx3.init()
-tts.setProperty("rate", 160)
-for voice in tts.getProperty("voices"):
-    if "Veena" in voice.name:
-        tts.setProperty("voice", voice.id)
-        break
-
+# TTS using gTTS
 def speak(text):
     st.markdown(f"**🤖 Response:** {text}")
-    tts.say(text)
-    tts.runAndWait()
+    tts = gTTS(text=text, lang='en')
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as fp:
+        tts.save(fp.name)
+        st.audio(fp.name, format='audio/mp3')
 
 if uploaded_file:
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
