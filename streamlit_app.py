@@ -12,6 +12,7 @@ from langchain_community.vectorstores import Chroma
 from langchain.chains import RetrievalQA
 from langchain_openai import ChatOpenAI
 from langchain_community.callbacks import get_openai_callback
+from langchain.schema import Document
 
 # Load environment variables
 load_dotenv()
@@ -42,11 +43,14 @@ if uploaded_file:
     splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=200)
     docs = splitter.split_documents(pages)
 
+    # Ensure metadata is safe
+    clean_docs = [Document(page_content=d.page_content, metadata=d.metadata or {}) for d in docs]
+
     embeddings = OpenAIEmbeddings(openai_api_key=api_key)
     persist_dir = tempfile.mkdtemp()
 
     vectorstore = Chroma.from_documents(
-        docs,
+        clean_docs,
         embedding=embeddings,
         persist_directory=persist_dir,
         collection_name="pdf_collection"

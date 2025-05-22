@@ -2,10 +2,12 @@ streamlit
 speechrecognition
 gTTS
 openai
-langchain
-langchain-community
 langchain-openai
-chromadb
 pypdf
 faiss-cpu
 python-dotenv
+langchain==0.2.*
+langchain-community
+chromadb==0.4.24
+protobuf==4.23.4
+
