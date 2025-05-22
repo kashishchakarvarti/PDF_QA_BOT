@@ -43,7 +43,12 @@ if uploaded_file:
     docs = splitter.split_documents(pages)
 
     embeddings = OpenAIEmbeddings(openai_api_key=api_key)
-    vectorstore = Chroma.from_documents(docs, embedding=embeddings, persist_directory="./chroma_db")
+    vectorstore = Chroma.from_documents(
+        docs,
+        embedding=embeddings,
+        persist_directory="./chroma_db",
+        collection_name="pdf_collection"
+    )
 
     llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key)
 
