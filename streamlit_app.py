@@ -47,13 +47,11 @@ if uploaded_file:
     clean_docs = [Document(page_content=d.page_content, metadata=d.metadata or {}) for d in docs]
 
     embeddings = OpenAIEmbeddings(openai_api_key=api_key)
-    persist_dir = tempfile.mkdtemp()
 
+    # Use Chroma in-memory
     vectorstore = Chroma.from_documents(
         clean_docs,
-        embedding=embeddings,
-        persist_directory=persist_dir,
-        collection_name="pdf_collection"
+        embedding=embeddings
     )
 
     llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key)
