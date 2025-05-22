@@ -43,10 +43,12 @@ if uploaded_file:
     docs = splitter.split_documents(pages)
 
     embeddings = OpenAIEmbeddings(openai_api_key=api_key)
+    persist_dir = tempfile.mkdtemp()
+
     vectorstore = Chroma.from_documents(
         docs,
         embedding=embeddings,
-        persist_directory="./chroma_db",
+        persist_directory=persist_dir,
         collection_name="pdf_collection"
     )
 
