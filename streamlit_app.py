@@ -48,7 +48,7 @@ if uploaded_file:
 
     embeddings = OpenAIEmbeddings(openai_api_key=api_key)
 
-    # Use Chroma in-memory
+    # Use Chroma in-memory (no persist_directory!)
     vectorstore = Chroma.from_documents(
         clean_docs,
         embedding=embeddings
